@@ -155,3 +155,5 @@ python priority_inheritance_protocol.py
 1. **گزینه ۱:** اجرای سناریوی کلاسیک ۳ پردازشی (مقایسه دقیق رخداد Priority Inversion و حل آن با PIP).
 2. **گزینه ۲:** اجرای سناریوی پیشرفته ۴ پردازشی با ۲ منبع مشترک (`R1` و `R2`) و وراثت زنجیره‌ای.
 3. **گزینه ۳:** وارد کردن دستی پردازش‌ها و منابع دلخواه توسط شما.
+---
+> **Course Project:** Embedded & Real-Time Systems — Eshragh Higher Education Institute | Developed by [@atnc6](https://github.com/atnc6)
