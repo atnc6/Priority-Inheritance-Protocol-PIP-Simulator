@@ -18,7 +18,7 @@ In **Real-Time Operating Systems (RTOS)** and embedded systems, tasks with stric
 
 When a high-priority task is forced to wait for a lower-priority task to release a shared resource, and that lower-priority task is simultaneously preempted by one or more medium-priority tasks, **Unbounded Priority Inversion** occurs. This phenomenon famously caused the **1997 Mars Pathfinder** spacecraft to experience repeated system resets on the surface of Mars.
 
-This repository provides a **zero-dependency, discrete-time RTOS kernel simulator** in Python that models, compares, and visualizes:
+This repository provides a **zero-dependency, discrete-time RTOS kernel simulator** in Python (`priority_inheritance_protocol.py`) that models, compares, and visualizes:
 1. **Standard Preemptive Priority Scheduling (Without PIP)** — demonstrating unbounded Priority Inversion.
 2. **Priority Inheritance Protocol (With PIP)** — demonstrating dynamic priority promotion, bounded blocking times, and real-time guarantee preservation.
 
@@ -38,27 +38,38 @@ Proposed by *Sha, Rajkumar, and Lehoczky (1990)*, **PIP** distinguishes between 
 
 $$P_{eff}(T_i) = \max \left( P_{base}(T_i), \; \max_{T_k \in \text{BlockedBy}(T_i)} P_{eff}(T_k) \right)$$
 
-* **Inheritance Rule:** When $T_{High}$ blocks on resource `R1` held by $T_{Low}$, $T_{Low}$ temporarily inherits $T_{High}$'s priority ($P_{eff}(T_{Low}) \leftarrow P_{eff}(T_{High})$). Consequently, arriving medium-priority tasks ($T_{Med}$) **cannot preempt** $T_{Low}$.
+* **Inheritance Rule:** When $T_{High}$ blocks on resource `R1` held by $T_{Low}$, $T_{Low}$ temporarily inherits $T_{High}$'s priority ($P_{eff}(T_{Low}) = P_{eff}(T_{High})$). Consequently, arriving medium-priority tasks ($T_{Med}$) **cannot preempt** $T_{Low}$.
 * **Transitivity:** If $T_{High}$ blocks on $T_{Med}$, and $T_{Med}$ blocks on $T_{Low}$, then $T_{Low}$ transitively inherits $T_{High}$'s priority.
 * **Restoration Rule:** As soon as $T_{Low}$ releases `R1`, its priority reverts to its original base value ($P_{base}(T_{Low})$), and $T_{High}$ is immediately unblocked and scheduled on the CPU.
 
 ---
 
-### 3. Key Features of This Simulator
-* **Zero External Dependencies:** Built 100% with the Python 3 standard library (`dataclasses`, `typing`, `copy`). Runs out-of-the-box on any machine.
-* **Terminal ASCII/Unicode Gantt Chart & CPU Timeline:** Visualizes tick-by-tick task states (`RUN_CPU`, `RUN_CS`, `RUN_INH`, `BLOCKED`, `READY`), active effective priorities, mutex lock owners, and Priority Inversion warning markers.
+### 3. Project Structure
+```text
+rtos-priority-inheritance-simulator/
+│
+├── priority_inheritance_protocol.py  # Core RTOS simulator, CLI Gantt renderer & analyzer
+├── README.md                         # Bilingual (EN/FA) technical documentation
+└── pip_gantt_report.html             # Auto-generated visual HTML Gantt chart report
+```
+
+---
+
+### 4. Key Features of This Simulator
+* **Zero External Dependencies:** Built 100% with the Python 3 standard library (`dataclasses`, `typing`, `copy`). Runs out-of-the-box on Windows, macOS, and Linux.
+* **Terminal ASCII/Unicode Gantt Chart & CPU Timeline:** Visualizes tick-by-tick task states (`███` Normal CPU, `▓▓▓` Critical Section, `▲▲▲` Inherited Priority Execution, `░░░` Blocked, `···` Ready), active effective priorities, mutex lock owners, and Priority Inversion warning markers (`!!`).
 * **Automatic HTML Visual Dashboard Export:** Automatically generates `pip_gantt_report.html` after every run for high-resolution browser viewing and academic presentations.
 * **Interactive & Preset Modes:** Includes the classic 3-task Mars Pathfinder scenario, a 4-task chained multi-resource scenario, and a full interactive CLI for custom user processes.
 
 ---
 
-### 4. Sample Output (Classic 3-Task Scenario)
+### 5. Sample Output (Classic 3-Task Scenario)
 
 ```text
   SIMULATION MODE: Standard Priority Scheduling (WITHOUT PIP)
   Time (t) │  0   1   2   3   4   5   6   7   8   9  10  11  12  13 
   ─────────┼────────────────────────────────────────────────────────
-  T_High(P3│   |   |███|░░░|░░░|░░░|░░░|░░░|░░░|░░░|░░░|▓▓▓|▓▓▓|███|
+  T_High(P3)│   |   |███|░░░|░░░|░░░|░░░|░░░|░░░|░░░|░░░|▓▓▓|▓▓▓|███|
   T_Med(P2)│   |   |   |   |███|███|███|███|███|   |   |   |   |   |
   T_Low(P1)│███|▓▓▓|···|▓▓▓|···|···|···|···|···|▓▓▓|▓▓▓|···|···|···|
   ─────────┼────────────────────────────────────────────────────────
@@ -70,23 +81,25 @@ $$P_{eff}(T_i) = \max \left( P_{base}(T_i), \; \max_{T_k \in \text{BlockedBy}(T_
 
 ```text
   SIMULATION MODE: Priority Inheritance Protocol (WITH PIP)
-  Time (t) │  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14 
-  ─────────┼────────────────────────────────────────────────────────────
-  T_High(P3│   |   |███|░░░|░░░|░░░|▓▓▓|▓▓▓|███|   |   |   |   |   |   |
-  T_Med(P2)│   |   |   |   |···|···|···|···|···|███|███|███|███|███|   |
-  T_Low(P1)│███|▓▓▓|···|⏫▓|⏫▓|⏫▓|···|···|···|···|···|···|···|···|███|
-  ─────────┼────────────────────────────────────────────────────────────
-  CPU Core │T_L|T_L|T_H|T_L|T_L|T_L|T_H|T_H|T_H|T_M|T_M|T_M|T_M|T_M|T_L|
-  Eff.Prio │ P1| P1| P3| *3| *3| *3| P3| P3| P3| P2| P2| P2| P2| P2| P1|
-  Mutex R1 │  -|T_L|T_L|T_L|T_L|T_L|T_H|T_H|  -|  -|  -|  -|  -|  -|  -|
-  Inversion│   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
+  Time (t) │  0   1   2   3   4   5   6   7   8   9  10  11  12  13 
+  ─────────┼────────────────────────────────────────────────────────
+  T_High(P3)│   |   |███|░░░|░░░|░░░|▓▓▓|▓▓▓|███|   |   |   |   |   |
+  T_Med(P2)│   |   |   |   |···|···|···|···|···|███|███|███|███|███|
+  T_Low(P1)│███|▓▓▓|···|▲▲▲|▲▲▲|▲▲▲|···|···|···|···|···|···|···|···|
+  ─────────┼────────────────────────────────────────────────────────
+  CPU Core │T_L|T_L|T_H|T_L|T_L|T_L|T_H|T_H|T_H|T_M|T_M|T_M|T_M|T_M|
+  Eff.Prio │ P1| P1| P3| *3| *3| *3| P3| P3| P3| P2| P2| P2| P2| P2|
+  Mutex R1 │  -|T_L|T_L|T_L|T_L|T_L|T_H|T_H|  -|  -|  -|  -|  -|  -|
+  Inversion│   |   |   |   |   |   |   |   |   |   |   |   |   |   |
 ```
 
-### 5. How to Run
+---
+
+### 6. How to Run
 ```bash
-git clone [https://github.com/YOUR_USERNAME/rtos-priority-inheritance-simulator.git](https://github.com/YOUR_USERNAME/rtos-priority-inheritance-simulator.git)
+git clone https://github.com/YOUR_USERNAME/rtos-priority-inheritance-simulator.git
 cd rtos-priority-inheritance-simulator
-python pip_simulator.py
+python priority_inheritance_protocol.py
 ```
 
 ---
@@ -100,7 +113,7 @@ python pip_simulator.py
 
 اگر یک پردازش با اولویت بالا ($T_{High}$) منتظر آزاد شدن منبعی بماند که در اختیار پردازش با اولویت پایین ($T_{Low}$) است، و در همین حین یک پردازش با اولویت متوسط ($T_{Med}$) وارد شود و پردازنده را از $T_{Low}$ بگیرد، پدیده خطرناک **وارونگی اولویت (Priority Inversion)** رخ می‌دهد. در این حالت، پردازش حیاتی سیستم عملاً معطل پردازشی با اولویت متوسط می‌ماند که هیچ ربطی به منبع مشترک ندارد! (مشابه باگ معروف فضاپیمای **Mars Pathfinder** در سال ۱۹۹۷).
 
-این پروژه یک شبیه‌ساز هسته زمان‌بند بی‌درنگ با **پایتون خالص (بدون هیچ کتابخانه جانبی)** است که رفتار سیستم را در دو حالت **بدون پروتکل (وقوع وارونگی اولویت)** و **مجهز به پروتکل وراثت اولویت (PIP)** شبیه‌سازی، مقایسه و به صورت گانت‌چارت (Gantt Chart) ترسیم می‌کند.
+این پروژه یک شبیه‌ساز هسته زمان‌بند بی‌درنگ با **پایتون خالص (بدون هیچ کتابخانه جانبی)** در قالب فایل `priority_inheritance_protocol.py` است که رفتار سیستم را در دو حالت **بدون پروتکل (وقوع وارونگی اولویت)** و **مجهز به پروتکل وراثت اولویت (PIP)** شبیه‌سازی، مقایسه و به صورت گانت‌چارت (Gantt Chart) ترسیم می‌کند.
 
 ---
 
@@ -113,14 +126,16 @@ python pip_simulator.py
 1. **قانون زمان‌بندی (Scheduling Rule):** پردازنده همیشه به پردازشِ آماده (Ready) تعلق می‌گیرد که بالاترین **اولویت مؤثر ($P_{eff}$)** را داشته باشد.
 2. **قانون تخصیص منبع (Allocation Rule):** اگر پردازش در حال اجرا به منبع `R` نیاز داشته باشد و منبع آزاد باشد، قفل آن را دریافت می‌کند؛ در غیر این صورت به حالت **مسدود (Blocked)** می‌رود.
 3. **قانون وراثت اولویت (Priority Inheritance Rule):** هرگاه پردازش $T_{High}$ به دلیل قفل بودن منبع `R` توسط $T_{Low}$ مسدود شود، پردازش $T_{Low}$ موقتاً اولویت پردازش $T_{High}$ را به ارث می‌برد:
-   $$P_{eff}(T_{Low}) = \max(P_{eff}(T_{Low}), P_{eff}(T_{High}))$$
-   به این ترتیب، اگر پردازش با اولویت متوسط ($T_{Med}$) وارد سیستم شود، دیگر زورش به $T_{Low}$ نمی‌رسد و $T_{Low}$ می‌تواند به سرعت ناحیه بحرانی خود را تمام کرده و منبع را آزاد کند.
-4. **قانون بازگشت اولویت (Priority Restoration Rule):** به محض اینکه $T_{Low}$ منبع `R` را آزاد کند، اولویت مؤثر آن به اولویت پایه اولیه‌اش برمی‌گردد و بلافاصله پردازش منتظر ($T_{High}$) بیدار شده و پردازنده را در اختیار می‌گیرد.
+
+$$P_{eff}(T_{Low}) = \max(P_{eff}(T_{Low}), P_{eff}(T_{High}))$$
+
+   به این ترتیب، اگر پردازش با اولویت متوسط ($T_{Med}$) وارد سیستم شود، دیگر قادر به پس‌راندن (Preempt) پردازش $T_{Low}$ نیست و $T_{Low}$ می‌تواند به سرعت ناحیه بحرانی خود را تمام کرده و منبع را آزاد کند.
+4. **قانون بازگشت اولویت (Priority Restoration Rule):** به محض اینکه $T_{Low}$ منبع `R` را آزاد کند، اولویت مؤثر آن به اولویت پایه اولیه‌اش بازمی‌گردد و بلافاصله پردازش منتظر ($T_{High}$) بیدار شده و پردازنده را در اختیار می‌گیرد.
 
 ---
 
 ### ۳. امکانات و خروجی‌های شبیه‌ساز
-* **رسم گانت‌چارت (Gantt Chart) در ترمینال:** نمایش وضعیت لحظه‌به‌لحظه هر پردازش با تفکیک اجرای عادی (`███`)، اجرای ناحیه بحرانی (`▓▓▓`)، اجرا با اولویت به ارث رسیده (`⏫▓`)، مسدود شده روی منبع (`░░░`) و منتظر در صف آماده (`···`).
+* **رسم گانت‌چارت (Gantt Chart) در ترمینال:** نمایش وضعیت لحظه‌به‌لحظه هر پردازش با تفکیک اجرای عادی (`███`)، اجرای ناحیه بحرانی (`▓▓▓`)، اجرا با اولویت به ارث رسیده (`▲▲▲`)، مسدود شده روی منبع (`░░░`) و منتظر در صف آماده (`···`).
 * **نوار زمان پردازنده (CPU Timeline) و مالکیت منابع:** نمایش اینکه در هر ثانیه کدام پردازش روی CPU است، اولویت فعلی چیست و کدام پردازش قفل منبع `R1` یا `R2` را در دست دارد.
 * **لاگ دقیق رویدادهای هسته (Kernel Event Log):** ثبت لحظه ورود، قفل شدن، مسدود شدن، ارتقای اولویت (PIP Boost) و بازگشت اولویت.
 * **جدول متریک‌های عملکردی:** محاسبه دقیق Turnaround Time، Response Time، زمان انتظار و مدت زمان وقوع Priority Inversion.
@@ -130,10 +145,10 @@ python pip_simulator.py
 ---
 
 ### ۴. نحوه اجرا
-نیاز به نصب هیچ کتابخانه‌ای نیست. کافیست پایتون ۳ روی سیستم شما نصب باشد:
+نیاز به نصب هیچ کتابخانه‌ای نیست. کافیست پایتون ۳ روی سیستم شما نصب باشد و دستور زیر را در پوشه پروژه اجرا کنید:
 
 ```bash
-python pip_simulator.py
+python priority_inheritance_protocol.py
 ```
 
 پس از اجرا، منوی زیر نمایش داده می‌شود:
